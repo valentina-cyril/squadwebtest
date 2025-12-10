@@ -85,16 +85,15 @@
 
         <div class="form-group">
             <label for="email-address">Email Address</label>
-            <input type="email" id="email-address" value="${email}" readonly>
+            <input type="email" id="email-address" readonly>
         </div>
 
         <div class="form-group">
-            <label for="amount">Amount (${currencyCode})</label>
-            <input type="number" id="amount" value="${amount}" readonly>
+            <label for="amount">Amount</label>
+            <input type="number" id="amount" readonly>
         </div>
 
-        <div class="amount-display">
-            ${currencyCode} ${amount.toLocaleString()}
+        <div class="amount-display" id="amount-display">
         </div>
 
         <button class="pay-button" onclick="SquadPay()" id="pay-btn">
@@ -104,43 +103,89 @@
 
     <script src="https://checkout.squadco.com/widget/squad.min.js"></script>
     <script>
-        
+        // Function to parse query parameters from URL
+        function getQueryParams() {
+            const params = new URLSearchParams(window.location.search);
+            return {
+                key: params.get('key'),
+                email: params.get('email'),
+                amount: params.get('amount'),
+                transaction_ref: params.get('transaction_ref'),
+                currency_code: params.get('currency_code'),
+                Payment_channel: params.get('Payment_channel'),
+                customer_name: params.get('customer_name'),
+                callback_url: params.get('callback_url'),
+                metadata: params.get('metadata'),
+                pass_charge: params.get('pass_charge')
+            };
+        }
+
+        // Parse and store query parameters
+        const queryParams = getQueryParams();
+
+        // Populate form fields when page loads
+        window.addEventListener('DOMContentLoaded', function() {
+            const emailInput = document.getElementById('email-address');
+            const amountInput = document.getElementById('amount');
+            const amountDisplay = document.getElementById('amount-display');
+
+            if (queryParams.email) {
+                emailInput.value = queryParams.email;
+            }
+
+            if (queryParams.amount) {
+                amountInput.value = queryParams.amount;
+            }
+
+            if (queryParams.currency_code && queryParams.amount) {
+                const formattedAmount = parseFloat(queryParams.amount).toLocaleString();
+                amountDisplay.textContent = `${queryParams.currency_code} ${formattedAmount}`;
+            }
+        });
 
         async function SquadPay() {
             console.log("SquadPay function called!");
+            console.log("Query parameters:", queryParams);
+            
+            // Validate required parameters
+            if (!queryParams.key || !queryParams.email || !queryParams.amount || !queryParams.transaction_ref) {
+                alert("Missing required parameters: key, email, amount, or transaction_ref");
+                return;
+            }
+
             // window.ReactNativeWebView?.postMessage(JSON.stringify({
             //     type: 'SQUAD_PAY_CALLED'
             // }));
 
-        
-
-                // console.log("Got transaction ref from API:", transactionRef);
-
-                const squadInstance = new squad({
-                    onClose: () => {
-                        console.log("Widget closed");
-                        // window.ReactNativeWebView?.postMessage(JSON.stringify({
-                        //     type: 'SQUAD_CLOSE'
-                        // }));
-                    },
-                    onLoad: () => {
-                        console.log("Squad widget loaded successfully!");
-                        // window.ReactNativeWebView?.postMessage();
-                    },
-                    onSuccess: (data) => {
-                        console.log("Payment successful", data);
-                        // window.ReactNativeWebView?.postMessage(JSON.stringify({
-                        //     type: 'SQUAD_SUCCESS',
-                        //     data: data
-                        // }));
-                    },
-                    key: "sandbox_pk_e79db6d578e463e6c1bc9d30c105d17fa6201e90ae14",
-                    email: "val@mailinator.com",
-                    amount: 100000,
-                    currency_code: "NGN",
-                    transaction_ref: "1234567890",
-                    // initiate_type: "inline",
-                 });
+            const squadInstance = new squad({
+                onClose: () => {
+                    console.log("Widget closed");
+                    // window.ReactNativeWebView?.postMessage(JSON.stringify({
+                    //     type: 'SQUAD_CLOSE'
+                    // }));
+                },
+                onLoad: () => {
+                    console.log("Squad widget loaded successfully!");
+                    // window.ReactNativeWebView?.postMessage();
+                },
+                onSuccess: (data) => {
+                    console.log("Payment successful", data);
+                    // If callback_url is provided, redirect to it
+                    if (queryParams.callback_url) {
+                        window.location.href = queryParams.callback_url;
+                    }
+                    // window.ReactNativeWebView?.postMessage(JSON.stringify({
+                    //     type: 'SQUAD_SUCCESS',
+                    //     data: data
+                    // }));
+                },
+                key: queryParams.key,
+                email: queryParams.email,
+                amount: parseInt(queryParams.amount),
+                currency_code: queryParams.currency_code || "NGN",
+                transaction_ref: queryParams.transaction_ref,
+                // initiate_type: "inline",
+            });
 
             squadInstance.setup();
             //  console.log("Calling squadInstance.open()...");
